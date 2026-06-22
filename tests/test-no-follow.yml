@@ -1,0 +1,51 @@
+name: Test DeployBot with follow and dispatch_ci disabled
+on:
+  workflow_dispatch:
+jobs:
+  test-no-follow:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "5"
+          token: "dummy-token-for-no-follow-test"
+
+      - name: Assert deploybot CLI was installed
+        run: |
+          echo "Checking if deploybot CLI is available in PATH..."
+          if ! command -v deploybot &>/dev/null; then
+            echo "FAIL: deploybot CLI not found in PATH after action ran"
+            exit 1
+          fi
+          echo "PASS: deploybot CLI is installed at $(command -v deploybot)"
+
+      - name: Assert Python 3.11 is available
+        run: |
+          PYTHON_VERSION=$(python --version 2>&1)
+          echo "actual python version: $PYTHON_VERSION"
+          if ! echo "$PYTHON_VERSION" | grep -q "3\.11\|3\.12\|3\.13"; then
+            echo "FAIL: expected Python 3.11+ but got: $PYTHON_VERSION"
+            exit 1
+          fi
+          echo "PASS: Python version is $PYTHON_VERSION"
+
+      - name: Assert deploybot package is importable
+        run: |
+          echo "Checking if agent_merge_queue package is importable..."
+          if ! python -c "import agent_merge_queue; print('Package version:', agent_merge_queue.__version__)" 2>/dev/null; then
+            # Try without version attribute
+            if ! python -c "import agent_merge_queue" 2>/dev/null; then
+              echo "FAIL: agent_merge_queue package is not importable"
+              exit 1
+            fi
+          fi
+          echo "PASS: agent_merge_queue package is importable"

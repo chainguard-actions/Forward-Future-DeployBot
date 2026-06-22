@@ -1,0 +1,69 @@
+[queue]
+base_branch = "main"
+queue_label = "merge-queue"
+blocked_label = "merge-queue-blocked"
+merge_method = "merge"
+required_checks = ["CI"]
+dependency_directive = "Merge-queue-depends-on"
+# Add each person allowed to say deploy and enqueue a pull request.
+trusted_actors = ["@repository-owner"]
+coordinator_actors = ["@repository-owner", "github-actions[bot]"]
+
+[files]
+generated_paths = []
+generated_version_paths = [] # Glob patterns are accepted.
+asset_version_pattern = '\?v=[0-9a-f]{12}'
+
+[review]
+# No review service is required by default. Add any combination below.
+
+# [[review.providers]]
+# kind = "github-approvals"
+# name = "Human approval"
+# allowed_reviewers = ["reviewer-login"]
+# minimum_approvals = 1
+
+# [[review.providers]]
+# kind = "check"
+# name = "Agent review"
+# check_name = "Agent Review"
+
+# [[review.providers]]
+# kind = "bot"
+# name = "Review bot"
+# login = "review-bot"
+# check_name = "Review Bot"
+# require_formal_review = true
+# require_resolved_threads = true
+
+[pipeline]
+intent_label = "deploy-requested"
+pause_label = "deploybot-paused"
+registry_label = "deploybot-registry"
+registry_title = "DeployBot delivery registry"
+thread_active_hours = 72
+ci_workflows = ["CI"]
+deploy_workflows = ["Deploy"]
+repair_hold_minutes = 60
+hold_merges_while_releasing = true
+repair_branch_prefix = "deploybot/repair"
+ready_to_merge_target_minutes = 15
+merge_to_live_target_minutes = 10
+auto_promote = true
+intent_scope = "head" # safest: a trusted source agent refreshes replacement heads
+pause_on_failure = true
+# Receives best-effort events, including retryable thread-deployed messages.
+# webhook_url_env = "DEPLOYBOT_WEBHOOK_URL"
+
+# [[pipeline.verifications]]
+# name = "Public login"
+# url = "https://example.com/login"
+# expected_status = 200
+
+[integration]
+# manual, overlap, or all
+mode = "manual"
+branch_prefix = "deploybot/integration"
+title_prefix = "DeployBot integration"
+max_batch_size = 3
+require_non_actions_author = false

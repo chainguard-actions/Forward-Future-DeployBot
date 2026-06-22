@@ -1,0 +1,40 @@
+name: Test DeployBot installation
+on:
+  workflow_dispatch:
+jobs:
+  test-install:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          token: "dummy-token-for-install-test"
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "5"
+
+      - name: Assert deploybot CLI was installed
+        run: |
+          echo "Checking if deploybot CLI is available in PATH..."
+          if ! command -v deploybot &>/dev/null; then
+            echo "FAIL: deploybot CLI not found in PATH after action ran"
+            exit 1
+          fi
+          echo "PASS: deploybot CLI is installed at $(command -v deploybot)"
+
+      - name: Assert deploybot package version
+        run: |
+          echo "Checking deploybot package version..."
+          VERSION=$(python -m pip show deploybot-merge-queue 2>/dev/null | grep '^Version:' | awk '{print $2}')
+          echo "actual version: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: deploybot-merge-queue package not found"
+            exit 1
+          fi
+          echo "PASS: deploybot-merge-queue version $VERSION is installed"
