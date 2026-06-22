@@ -1,0 +1,40 @@
+name: Test custom config path input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create custom config file
+        run: |
+          mkdir -p custom-config-dir
+          cat > custom-config-dir/myqueue.toml <<'EOF'
+          # custom deploybot config
+          EOF
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          config: custom-config-dir/myqueue.toml
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "30"
+
+      - name: Assert deploybot CLI was installed
+        run: |
+          if ! command -v deploybot &>/dev/null; then
+            echo "FAIL: deploybot CLI not found after action ran"
+            exit 1
+          fi
+          echo "PASS: deploybot CLI is available"
+
+      - name: Assert deploybot accepts custom config path flag
+        run: |
+          deploybot --config custom-config-dir/myqueue.toml react --help
+          echo "PASS: deploybot --config <path> react --help exited successfully"
