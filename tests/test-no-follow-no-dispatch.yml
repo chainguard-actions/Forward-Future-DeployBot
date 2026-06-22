@@ -1,0 +1,36 @@
+name: Test with follow and dispatch_ci disabled
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run DeployBot action with follow and dispatch_ci disabled
+        id: action
+        uses: .
+        with:
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "30"
+        continue-on-error: true
+      - name: Assert deploybot was installed
+        run: |
+          if ! command -v deploybot &>/dev/null; then
+            echo "FAIL: deploybot command not found after action ran"
+            exit 1
+          fi
+          echo "deploybot is installed: PASS"
+      - name: Assert action was attempted
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "Action was attempted (outcome=$OUTCOME): PASS"

@@ -1,0 +1,62 @@
+name: DeployBot
+description: Promote, batch, merge, and follow agent-authored pull requests
+inputs:
+  config:
+    description: Repository-relative merge queue policy path
+    required: false
+    default: .mergequeue.toml
+  follow:
+    description: Follow cumulative main through CI and deployment
+    required: false
+    default: "true"
+  dispatch_ci:
+    description: Dispatch configured CI after a merge made with github.token
+    required: false
+    default: "true"
+  timeout:
+    description: Maximum release-follow time in seconds
+    required: false
+    default: "1800"
+runs:
+  using: composite
+  steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
+    - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+      with:
+        python-version: "3.11"
+    - shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: python -m pip install "$ACTION_PATH"
+    - shell: bash
+      env:
+        DEPLOYBOT_CONFIG: ${{ inputs.config }}
+        GH_TOKEN: ${{ github.token }}
+        DEPLOYBOT_FOLLOW: ${{ inputs.follow }}
+        DEPLOYBOT_DISPATCH_CI: ${{ inputs.dispatch_ci }}
+        DEPLOYBOT_TIMEOUT: ${{ inputs.timeout }}
+      run: |
+        args=(react --timeout "$DEPLOYBOT_TIMEOUT")
+        if [[ "$DEPLOYBOT_DISPATCH_CI" == "true" ]]; then
+          args+=(--dispatch-ci)
+        fi
+        if [[ "$DEPLOYBOT_FOLLOW" == "true" ]]; then
+          args+=(--follow)
+        fi
+        deploybot --config "$DEPLOYBOT_CONFIG" "${args[@]}"

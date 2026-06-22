@@ -1,0 +1,63 @@
+name: DeployBot
+
+on:
+  pull_request_target:
+    types: [labeled, ready_for_review, reopened, synchronize]
+  pull_request_review:
+    types: [submitted, dismissed]
+  # Keep this list aligned with pipeline.ci_workflows in .mergequeue.toml.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  check_suite:
+    types: [completed]
+  # GitHub concurrency coalesces pending event bursts. Reconcile the complete
+  # durable state periodically so the last cancelled event cannot strand work.
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  issues: write
+  actions: write # required for post-merge workflow_dispatch with github.token
+
+concurrency:
+  group: deploybot-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  react:
+    if: >-
+      (
+        github.event_name != 'pull_request_target' ||
+        (
+          github.event.action == 'labeled' &&
+          (
+            github.event.label.name == 'deploy-requested' ||
+            github.event.label.name == 'merge-queue'
+          )
+        ) ||
+        (
+          github.event.action != 'labeled' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        )
+      ) &&
+      (
+        github.event_name != 'check_suite' ||
+        (
+          github.event.check_suite.app.slug != 'github-actions' &&
+          github.event.check_suite.pull_requests[0].base.ref ==
+            github.event.repository.default_branch
+        )
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      # v0.2.11 implementation; keep the full commit for privileged workflows.
+      - uses: Forward-Future/DeployBot@bf1ccadb3a4110dd29b70efe4f621f822110bfcc

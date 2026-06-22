@@ -1,0 +1,24 @@
+{
+  "name": "deploybot",
+  "version": "0.2.11",
+  "description": "Coordinate exact-head pull requests through verified deployment and thread notification",
+  "author": {
+    "name": "DeployBot contributors"
+  },
+  "license": "MIT",
+  "keywords": ["github", "merge-queue", "pull-requests", "agents"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "DeployBot",
+    "shortDescription": "Review and land pull requests safely.",
+    "longDescription": "Coordinates exact-head review, manual deploy authorization, burst merging, overlap handling, exact-main verification, and source-thread deployment receipts.",
+    "developerName": "DeployBot contributors",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Review this PR and prepare it for the merge queue.",
+      "Deploy this PR through the agent merge queue.",
+      "Show me what is blocking the merge queue."
+    ]
+  }
+}
