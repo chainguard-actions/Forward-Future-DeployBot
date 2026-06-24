@@ -1,0 +1,48 @@
+name: Test custom config path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Create a custom config file so the action can find it
+      - name: Create custom mergequeue config
+        run: |
+          cat > /tmp/custom-mergequeue.toml <<'EOF'
+          # Custom merge queue policy for testing
+          [queue]
+          max_batch_size = 5
+          EOF
+          echo "Created custom config at /tmp/custom-mergequeue.toml"
+
+      # Run the action with a custom config path.
+      # deploybot react will fail without real GitHub credentials, so we allow
+      # the step to fail and then verify the package was installed.
+      - id: action
+        uses: .
+        with:
+          config: /tmp/custom-mergequeue.toml
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "30"
+        continue-on-error: true
+
+      - name: Verify deploybot CLI was installed
+        run: |
+          echo "Checking that deploybot is installed..."
+          if ! command -v deploybot &>/dev/null; then
+            echo "FAIL: deploybot command not found — pip install did not succeed"
+            exit 1
+          fi
+          echo "PASS: deploybot is installed at $(command -v deploybot)"
+
+      - name: Verify deploybot react subcommand is available
+        run: |
+          echo "Checking deploybot react --help..."
+          deploybot react --help
+          echo "PASS: deploybot react --help exited successfully"

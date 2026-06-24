@@ -1,0 +1,37 @@
+name: Test custom inputs (follow=false, dispatch_ci=false)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Run the action with follow and dispatch_ci disabled and a short timeout.
+      # deploybot react will fail without real GitHub credentials, so we allow
+      # the step to fail and then verify the package was installed.
+      - id: action
+        uses: .
+        with:
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "60"
+        continue-on-error: true
+
+      - name: Verify deploybot CLI was installed
+        run: |
+          echo "Checking that deploybot is installed..."
+          if ! command -v deploybot &>/dev/null; then
+            echo "FAIL: deploybot command not found — pip install did not succeed"
+            exit 1
+          fi
+          echo "PASS: deploybot is installed at $(command -v deploybot)"
+
+      - name: Verify deploybot version is accessible
+        run: |
+          echo "Checking deploybot --version or --help..."
+          deploybot --help
+          echo "PASS: deploybot --help exited successfully"

@@ -1,0 +1,37 @@
+name: Test basic usage (default inputs)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Run the action with default inputs; deploybot react will fail without
+      # real GitHub credentials, so we allow the step to fail and then verify
+      # that the deploybot package was installed successfully.
+      - id: action
+        uses: .
+        with:
+          follow: "true"
+          dispatch_ci: "true"
+          timeout: "1800"
+        continue-on-error: true
+
+      - name: Verify deploybot CLI was installed
+        run: |
+          echo "Checking that deploybot is installed..."
+          if ! command -v deploybot &>/dev/null; then
+            echo "FAIL: deploybot command not found — pip install did not succeed"
+            exit 1
+          fi
+          echo "PASS: deploybot is installed at $(command -v deploybot)"
+
+      - name: Verify deploybot react subcommand is available
+        run: |
+          echo "Checking deploybot react --help..."
+          deploybot react --help
+          echo "PASS: deploybot react --help exited successfully"
