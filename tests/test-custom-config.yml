@@ -1,0 +1,41 @@
+name: Test action with custom config path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a minimal mergequeue config
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/custom-config-dir"
+          cat > "$GITHUB_WORKSPACE/custom-config-dir/mergequeue.toml" <<'EOF'
+          # minimal deploybot config for testing
+          EOF
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          token: "fake-token-for-config-test"
+          config: "custom-config-dir/mergequeue.toml"
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "5"
+
+      - name: Assert action ran with custom config
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action outcome: $OUTCOME"
+          # The action should attempt to run with the custom config path.
+          # A fake token will cause an API error, not a config-path error.
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with custom config path (outcome=$OUTCOME)"

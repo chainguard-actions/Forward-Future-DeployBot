@@ -1,0 +1,35 @@
+name: Test basic usage - deploybot installs and CLI is available
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Run the action under test. The action installs Python + deploybot, then
+      # calls `deploybot react` which will fail without a real GitHub context.
+      # continue-on-error lets us assert on the installation side-effect.
+      - id: action
+        uses: .
+        continue-on-error: true
+        env:
+          GITHUB_REF: refs/heads/main
+          GITHUB_EVENT_NAME: push
+        with:
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "10"
+
+      - name: Assert deploybot CLI was installed by the action
+        run: |
+          if ! command -v deploybot &>/dev/null; then
+            echo "FAIL: deploybot command not found after action ran"
+            exit 1
+          fi
+          echo "PASS: deploybot is installed"
+
+      - name: Assert deploybot --help exits cleanly
+        run: |
+          deploybot --help
+          echo "PASS: deploybot --help succeeded"

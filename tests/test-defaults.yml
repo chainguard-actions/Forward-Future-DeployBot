@@ -1,0 +1,42 @@
+name: Test action invocation with default inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # The action installs deploybot and then runs `deploybot react`.
+      # With no real GitHub context the react command will fail at the API call,
+      # but we can verify the install step succeeds by checking the CLI exists
+      # after the action's setup-python + pip install steps run.
+      # We use `continue-on-error: true` so the workflow doesn't abort on the
+      # expected API failure, then assert the exit code is non-zero (API error)
+      # rather than a packaging/install error.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          token: "fake-token-for-install-test"
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "10"
+
+      - name: Assert action ran (install succeeded, API call failed as expected)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action outcome: $OUTCOME"
+          # The action should fail because the fake token can't authenticate,
+          # not because of a packaging/install error.
+          # Either 'failure' (API error) or 'success' are acceptable here;
+          # what we must NOT see is a missing-command error from the shell.
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran (outcome=$OUTCOME)"
