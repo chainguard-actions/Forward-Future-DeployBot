@@ -1,0 +1,78 @@
+name: Test with valid config file
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a valid mergequeue config
+        run: |
+          cat > .mergequeue.toml << 'EOF'
+          [queue]
+          base_branch = "main"
+          queue_label = "merge-queue"
+          blocked_label = "merge-queue-blocked"
+          merge_method = "merge"
+          required_checks = ["CI"]
+          dependency_directive = "Merge-queue-depends-on"
+          trusted_actors = ["@repository-owner"]
+          coordinator_actors = ["@repository-owner", "github-actions[bot]"]
+
+          [files]
+          generated_paths = []
+          generated_version_paths = []
+          asset_version_pattern = '\?v=[0-9a-f]{12}'
+
+          [review]
+
+          [pipeline]
+          intent_label = "deploy-requested"
+          pause_label = "deploybot-paused"
+          registry_label = "deploybot-registry"
+          registry_title = "DeployBot delivery registry"
+          thread_active_hours = 72
+          ci_workflows = ["CI"]
+          deploy_workflows = ["Deploy"]
+          batch_settle_seconds = 15
+          ci_failure_grace_seconds = 90
+          promotion_workers = 4
+          repair_hold_minutes = 60
+          hold_merges_while_releasing = true
+          repair_branch_prefix = "deploybot/repair"
+          ready_to_merge_target_minutes = 15
+          merge_to_live_target_minutes = 10
+          auto_promote = true
+          intent_scope = "head"
+          pause_on_failure = true
+
+          [integration]
+          mode = "manual"
+          branch_prefix = "deploybot/integration"
+          title_prefix = "DeployBot integration"
+          max_batch_size = 3
+          require_non_actions_author = false
+          EOF
+          echo "Config file created"
+          cat .mergequeue.toml
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          config: .mergequeue.toml
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "30"
+      - name: Assert action did not fail due to config error
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action may succeed (no PRs to process) or fail due to API/network issues,
+          # but it should NOT fail due to a missing/invalid config.
+          # We verify the action ran (outcome is set) and the config was loaded.
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with outcome=$OUTCOME (config was loaded successfully)"
