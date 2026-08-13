@@ -1,4 +1,4 @@
-name: Test basic usage - install and run with valid config
+name: Test no-follow and no-dispatch-ci flags
 on:
   workflow_dispatch:
 jobs:
@@ -10,8 +10,6 @@ jobs:
       - name: Copy fixture config to workspace root
         run: |
           cp "$GITHUB_WORKSPACE/tests/fixtures/.mergequeue.toml" "$GITHUB_WORKSPACE/.mergequeue.toml"
-          echo "Config file written:"
-          cat "$GITHUB_WORKSPACE/.mergequeue.toml"
 
       - id: action
         uses: .
@@ -24,7 +22,6 @@ jobs:
 
       - name: Assert deploybot package is installed
         run: |
-          # Try multiple ways to check if the package is installed
           if pip show deploybot-merge-queue > /dev/null 2>&1; then
             echo "PASS: deploybot-merge-queue package is installed (via pip)"
           elif pip3 show deploybot-merge-queue > /dev/null 2>&1; then
@@ -32,28 +29,40 @@ jobs:
           elif python3 -m pip show deploybot-merge-queue > /dev/null 2>&1; then
             echo "PASS: deploybot-merge-queue package is installed (via python3 -m pip)"
           else
-            echo "Checking all pip locations..."
-            pip list 2>&1 | grep -i deploy || true
-            pip3 list 2>&1 | grep -i deploy || true
-            find /usr /home /opt -name "deploybot*" 2>/dev/null | head -10 || true
             echo "FAIL: deploybot-merge-queue package not found"
             exit 1
           fi
 
-      - name: Assert deploybot CLI is runnable
+      - name: Verify react subcommand has expected flags
         run: |
-          # Find deploybot in PATH or common pip install locations
+          # Find deploybot binary
+          DEPLOYBOT_BIN=""
           if command -v deploybot > /dev/null 2>&1; then
-            echo "PASS: deploybot found in PATH at $(command -v deploybot)"
-            deploybot --help 2>&1 | head -5 || true
+            DEPLOYBOT_BIN="$(command -v deploybot)"
           else
-            # Search common locations
-            FOUND=$(find /usr /home /opt /root -name "deploybot" -type f 2>/dev/null | head -1)
-            if [ -n "$FOUND" ]; then
-              echo "PASS: deploybot binary found at $FOUND"
-              "$FOUND" --help 2>&1 | head -5 || true
-            else
-              echo "FAIL: deploybot not found anywhere"
-              exit 1
-            fi
+            DEPLOYBOT_BIN=$(find /usr /home /opt /root -name "deploybot" -type f 2>/dev/null | head -1)
+          fi
+
+          if [ -z "$DEPLOYBOT_BIN" ]; then
+            echo "FAIL: deploybot not found"
+            exit 1
+          fi
+          echo "Using deploybot at: $DEPLOYBOT_BIN"
+
+          HELP_OUTPUT=$("$DEPLOYBOT_BIN" react --help 2>&1 || true)
+          echo "react --help output:"
+          echo "$HELP_OUTPUT"
+
+          if echo "$HELP_OUTPUT" | grep -q "timeout"; then
+            echo "PASS: --timeout flag is present in react subcommand"
+          else
+            echo "FAIL: --timeout flag not found in react help"
+            exit 1
+          fi
+
+          if echo "$HELP_OUTPUT" | grep -qE "follow|dispatch"; then
+            echo "PASS: --follow or --dispatch-ci flag is present in react subcommand"
+          else
+            echo "FAIL: expected flags not found in react help"
+            exit 1
           fi

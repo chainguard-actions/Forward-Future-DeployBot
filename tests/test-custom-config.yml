@@ -4,45 +4,49 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_REF: refs/heads/main
-      GITHUB_EVENT_NAME: push
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      # Create a custom config file so the action can find it
-      - name: Create custom mergequeue config
+      - name: Set up custom config at non-default path
         run: |
-          cat > /tmp/custom-mergequeue.toml <<'EOF'
-          # Custom merge queue policy for testing
-          [queue]
-          max_batch_size = 5
-          EOF
-          echo "Created custom config at /tmp/custom-mergequeue.toml"
+          mkdir -p "$GITHUB_WORKSPACE/custom-config"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/.mergequeue.toml" "$GITHUB_WORKSPACE/custom-config/queue.toml"
+          echo "Custom config written to custom-config/queue.toml"
+          cat "$GITHUB_WORKSPACE/custom-config/queue.toml"
 
-      # Run the action with a custom config path.
-      # deploybot react will fail without real GitHub credentials, so we allow
-      # the step to fail and then verify the package was installed.
       - id: action
         uses: .
         with:
-          config: /tmp/custom-mergequeue.toml
+          config: custom-config/queue.toml
           follow: "false"
           dispatch_ci: "false"
           timeout: "30"
         continue-on-error: true
 
-      - name: Verify deploybot CLI was installed
+      - name: Assert deploybot package is installed
         run: |
-          echo "Checking that deploybot is installed..."
-          if ! command -v deploybot &>/dev/null; then
-            echo "FAIL: deploybot command not found — pip install did not succeed"
+          if pip show deploybot-merge-queue > /dev/null 2>&1; then
+            echo "PASS: deploybot-merge-queue package is installed (via pip)"
+          elif pip3 show deploybot-merge-queue > /dev/null 2>&1; then
+            echo "PASS: deploybot-merge-queue package is installed (via pip3)"
+          elif python3 -m pip show deploybot-merge-queue > /dev/null 2>&1; then
+            echo "PASS: deploybot-merge-queue package is installed (via python3 -m pip)"
+          else
+            echo "FAIL: deploybot-merge-queue package not found"
             exit 1
           fi
-          echo "PASS: deploybot is installed at $(command -v deploybot)"
 
-      - name: Verify deploybot react subcommand is available
+      - name: Assert custom config file is valid TOML with expected content
         run: |
-          echo "Checking deploybot react --help..."
-          deploybot react --help
-          echo "PASS: deploybot react --help exited successfully"
+          # Write the Python check script to a file first to avoid YAML quoting issues
+          printf '%s\n' \
+            'import tomllib, sys' \
+            'with open("custom-config/queue.toml", "rb") as f:' \
+            '    data = tomllib.load(f)' \
+            'branch = data.get("queue", {}).get("base_branch", "")' \
+            'if not branch:' \
+            '    print("FAIL: base_branch not found in config")' \
+            '    sys.exit(1)' \
+            'print("PASS: config is valid TOML, base_branch=" + branch)' \
+            > /tmp/check_toml.py
+          python3 /tmp/check_toml.py

@@ -1,0 +1,94 @@
+name: Test installation - verify deploybot package is installed
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Copy fixture config to workspace root
+        run: |
+          cp "$GITHUB_WORKSPACE/tests/fixtures/.mergequeue.toml" "$GITHUB_WORKSPACE/.mergequeue.toml"
+
+      - id: action
+        uses: .
+        with:
+          config: .mergequeue.toml
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "30"
+        continue-on-error: true
+
+      - name: Assert deploybot package is installed via pip
+        run: |
+          if pip show deploybot-merge-queue > /dev/null 2>&1; then
+            echo "PASS: deploybot-merge-queue package is installed (via pip)"
+            pip show deploybot-merge-queue
+          elif pip3 show deploybot-merge-queue > /dev/null 2>&1; then
+            echo "PASS: deploybot-merge-queue package is installed (via pip3)"
+            pip3 show deploybot-merge-queue
+          elif python3 -m pip show deploybot-merge-queue > /dev/null 2>&1; then
+            echo "PASS: deploybot-merge-queue package is installed (via python3 -m pip)"
+            python3 -m pip show deploybot-merge-queue
+          else
+            echo "FAIL: deploybot-merge-queue package not found"
+            pip list 2>&1 | head -40 || true
+            exit 1
+          fi
+
+      - name: Assert deploybot CLI entry point exists
+        run: |
+          if command -v deploybot > /dev/null 2>&1; then
+            echo "PASS: deploybot found in PATH at $(command -v deploybot)"
+          else
+            FOUND=$(find /usr /home /opt /root -name "deploybot" -type f 2>/dev/null | head -1)
+            if [ -n "$FOUND" ]; then
+              echo "PASS: deploybot binary found at $FOUND"
+            else
+              echo "FAIL: deploybot CLI not found"
+              exit 1
+            fi
+          fi
+
+      - name: Assert mergeq alias entry point exists
+        run: |
+          if command -v mergeq > /dev/null 2>&1; then
+            echo "PASS: mergeq found in PATH at $(command -v mergeq)"
+          else
+            FOUND=$(find /usr /home /opt /root -name "mergeq" -type f 2>/dev/null | head -1)
+            if [ -n "$FOUND" ]; then
+              echo "PASS: mergeq alias found at $FOUND"
+            else
+              echo "FAIL: mergeq alias not found"
+              exit 1
+            fi
+          fi
+
+      - name: Assert package version is available
+        run: |
+          # Try to import agent_merge_queue from the installed package
+          INSTALLED_VERSION=$(python3 -c "import agent_merge_queue; print(agent_merge_queue.__version__)" 2>/dev/null || true)
+          if [ -z "$INSTALLED_VERSION" ]; then
+            # Try with the pip-installed python
+            PYTHON_BIN=$(pip show deploybot-merge-queue 2>/dev/null | grep -i location | awk '{print $2}' | sed 's|/lib/.*||')/bin/python3
+            if [ -f "$PYTHON_BIN" ]; then
+              INSTALLED_VERSION=$("$PYTHON_BIN" -c "import agent_merge_queue; print(agent_merge_queue.__version__)" 2>/dev/null || true)
+            fi
+          fi
+          echo "Installed version: $INSTALLED_VERSION"
+          if [ -z "$INSTALLED_VERSION" ]; then
+            echo "FAIL: could not determine installed version"
+            exit 1
+          fi
+          echo "PASS: package version is $INSTALLED_VERSION"
+
+      - name: Assert Python 3.11 was set up
+        run: |
+          PYTHON_VERSION=$(python3 --version 2>&1)
+          echo "Python version: $PYTHON_VERSION"
+          if ! echo "$PYTHON_VERSION" | grep -q "3\.11"; then
+            echo "FAIL: expected Python 3.11, got: $PYTHON_VERSION"
+            exit 1
+          fi
+          echo "PASS: Python 3.11 is active"
