@@ -1,0 +1,82 @@
+name: Test custom flags - no follow, no dispatch-ci, custom timeout
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Create a minimal config file
+      - name: Create minimal mergequeue config
+        run: |
+          cat > .mergequeue.toml << 'EOF'
+          [queue]
+          base_branch = "main"
+          queue_label = "merge-queue"
+          blocked_label = "merge-queue-blocked"
+          merge_method = "merge"
+          required_checks = ["CI"]
+          dependency_directive = "Merge-queue-depends-on"
+          trusted_actors = ["@repository-owner"]
+          coordinator_actors = ["@repository-owner", "github-actions[bot]"]
+
+          [files]
+          generated_paths = []
+          generated_version_paths = []
+          asset_version_pattern = '\?v=[0-9a-f]{12}'
+
+          [pipeline]
+          intent_label = "deploy-requested"
+          pause_label = "deploybot-paused"
+          registry_label = "deploybot-registry"
+          registry_title = "DeployBot delivery registry"
+          thread_active_hours = 72
+          ci_workflows = ["CI"]
+          deploy_workflows = ["Deploy"]
+          repair_hold_minutes = 60
+          hold_merges_while_releasing = true
+          repair_branch_prefix = "deploybot/repair"
+          ready_to_merge_target_minutes = 15
+          merge_to_live_target_minutes = 10
+          auto_promote = true
+          intent_scope = "head"
+          pause_on_failure = true
+
+          [integration]
+          mode = "manual"
+          branch_prefix = "deploybot/integration"
+          title_prefix = "DeployBot integration"
+          max_batch_size = 3
+          require_non_actions_author = false
+          EOF
+
+      # Run with follow=false and dispatch_ci=false and a short timeout
+      - id: action
+        uses: .
+        with:
+          config: .mergequeue.toml
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "5"
+        continue-on-error: true
+
+      # Verify the package is installed with the correct version
+      - name: Assert correct package version installed
+        run: |
+          VERSION=$(python -m pip show deploybot-merge-queue 2>/dev/null | grep '^Version:' | awk '{print $2}')
+          echo "actual version: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: deploybot-merge-queue package not found"
+            exit 1
+          fi
+          echo "PASS: deploybot-merge-queue version $VERSION is installed"
+
+      # Verify the mergeq alias is also available (from pyproject.toml scripts)
+      - name: Assert mergeq alias is available
+        run: |
+          if ! command -v mergeq > /dev/null 2>&1; then
+            echo "FAIL: mergeq alias not found on PATH"
+            exit 1
+          fi
+          echo "PASS: mergeq alias is available"

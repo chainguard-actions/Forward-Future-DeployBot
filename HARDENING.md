@@ -8,7 +8,7 @@
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
-**Harden Agent Version:** `1`
+**Harden Agent Version:** `2`
 
 Action **Forward-Future--DeployBot/v0.2.14** was hardened automatically. 1 finding(s) were identified and resolved across 1 iteration(s).
 
@@ -16,7 +16,9 @@ Action **Forward-Future--DeployBot/v0.2.14** was hardened automatically. 1 findi
 
 ### script-injection (severity: high)
 
-Sub-rule (a): A ${{ }} expression is interpolated directly inside a run: shell command. In action.yml line 31, the step `run: python -m pip install "${{ github.action_path }}"` embeds the github.action_path context value directly into the shell command string. Per the script-injection check, ANY ${{ ... }} expression inside a run: block is a finding, because the value flows through YAML template substitution before the shell ever sees it. The fix is to route the value through an env: variable (e.g., ACTION_PATH: ${{ github.action_path }}) and reference it as "$ACTION_PATH" in the shell command.
+Sub-rule (a): A GitHub Actions expression `${{ github.action_path }}` is interpolated directly inside a `run:` shell command string. Before the shell ever sees the command, YAML template substitution replaces the expression with its value, meaning any unexpected characters in the path could affect shell parsing. The offending line is: `run: python -m pip install "${{ github.action_path }}"`
+
+The safe alternative is to use the `$GITHUB_ACTION_PATH` environment variable (which is automatically set by the runner) instead of the `${{ github.action_path }}` expression: `run: python -m pip install "$GITHUB_ACTION_PATH"`
 
 Locations:
 
@@ -30,5 +32,5 @@ Locations:
 
 **Notes:**
 
-Fixed script-injection in action.yml line 31: moved `${{ github.action_path }}` out of the `run:` shell command and into an `env:` block as `ACTION_PATH: ${{ github.action_path }}`. The shell command now uses `"$ACTION_PATH"` instead of `"${{ github.action_path }}"`.
+Replaced `${{ github.action_path }}` in the `run: python -m pip install` command with the equivalent runner-provided environment variable `$GITHUB_ACTION_PATH`. This avoids YAML template substitution of the expression directly into the shell string, eliminating the script injection risk. The `$GITHUB_ACTION_PATH` environment variable is automatically set by the GitHub Actions runner and is the safe, idiomatic alternative.
 
