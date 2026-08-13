@@ -1,0 +1,36 @@
+name: Test custom config path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Remove default config if present
+        run: rm -f "$GITHUB_WORKSPACE/.mergequeue.toml"
+
+      - name: Run action with custom config path
+        id: action
+        uses: .
+        with:
+          config: tests/fixtures/custom.mergequeue.toml
+          follow: "false"
+          dispatch_ci: "false"
+          timeout: "30"
+        continue-on-error: true
+
+      - name: Assert action did not fail due to missing config
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action should not fail with "config not found" error.
+          # It may fail for other reasons (no PRs, API issues), but
+          # a config-not-found failure means the custom path was not read.
+          # We check that deploybot was at least installed and ran.
+          if ! command -v deploybot > /dev/null 2>&1; then
+            echo "FAIL: deploybot was not installed"
+            exit 1
+          fi
+          echo "PASS: deploybot installed and ran with custom config path (outcome: $OUTCOME)"

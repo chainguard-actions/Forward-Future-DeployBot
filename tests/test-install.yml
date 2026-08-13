@@ -1,4 +1,4 @@
-name: Test basic usage with config file
+name: Test deploybot installation
 on:
   workflow_dispatch:
 jobs:
@@ -48,7 +48,7 @@ jobs:
           title_prefix = "DeployBot integration"
           EOF
 
-      - name: Verify deploybot installs and runs
+      - name: Run action (installs deploybot and runs react)
         id: action
         uses: .
         with:
@@ -58,15 +58,26 @@ jobs:
           timeout: "30"
         continue-on-error: true
 
-      - name: Assert action completed (install succeeded)
+      - name: Assert deploybot CLI is installed
         run: |
-          # The action should at minimum install deploybot successfully.
-          # It may exit non-zero if there are no PRs or queue items,
-          # but the key check is that deploybot was installed and ran.
-          if deploybot --help > /dev/null 2>&1; then
-            echo "PASS: deploybot is installed and accessible"
-          else
-            echo "FAIL: deploybot was not installed"
+          if ! command -v deploybot > /dev/null 2>&1; then
+            echo "FAIL: deploybot command not found after install"
             exit 1
           fi
-          echo "PASS"
+          echo "PASS: deploybot is installed"
+
+      - name: Assert mergeq alias is installed
+        run: |
+          if ! command -v mergeq > /dev/null 2>&1; then
+            echo "FAIL: mergeq alias not found after install"
+            exit 1
+          fi
+          echo "PASS: mergeq alias is installed"
+
+      - name: Assert deploybot shows help
+        run: |
+          if ! deploybot --help > /dev/null 2>&1; then
+            echo "FAIL: deploybot --help failed"
+            exit 1
+          fi
+          echo "PASS: deploybot --help works"
