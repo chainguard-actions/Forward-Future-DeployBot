@@ -1,4 +1,4 @@
-name: Test basic usage with valid config
+name: Test custom inputs (no follow, no dispatch-ci, short timeout)
 on:
   workflow_dispatch:
 jobs:
@@ -7,18 +7,19 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Create a valid mergequeue config
+      - name: Create a valid mergequeue config at custom path
         run: |
-          cat > .mergequeue.toml <<'EOF'
+          mkdir -p .config
+          cat > .config/mergequeue.toml <<'EOF'
           [queue]
           base_branch = "main"
           queue_label = "merge-queue"
           blocked_label = "merge-queue-blocked"
-          merge_method = "merge"
-          required_checks = ["CI"]
+          merge_method = "squash"
+          required_checks = ["CI", "Lint"]
           dependency_directive = "Merge-queue-depends-on"
-          trusted_actors = ["github-actions-test-bot"]
-          coordinator_actors = ["github-actions-test-bot"]
+          trusted_actors = ["test-bot-actor"]
+          coordinator_actors = ["test-bot-actor"]
 
           [files]
           generated_paths = []
@@ -40,7 +41,7 @@ jobs:
           promotion_workers = 1
           ready_to_merge_target_minutes = 15
           merge_to_live_target_minutes = 10
-          auto_promote = true
+          auto_promote = false
           intent_scope = "head"
           pause_on_failure = false
 
@@ -50,26 +51,26 @@ jobs:
           title_prefix = "DeployBot integration"
           EOF
 
-      - name: Run DeployBot action with follow=false and dispatch_ci=false
+      - name: Run DeployBot with custom config path and no follow/dispatch-ci
         id: action
         uses: .
         with:
-          config: .mergequeue.toml
+          config: .config/mergequeue.toml
           follow: "false"
           dispatch_ci: "false"
           timeout: "30"
         continue-on-error: true
 
-      - name: Assert action completed (exit 0 or known non-fatal exit)
+      - name: Assert action ran (success or known API failure)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
-          # The action should succeed (no PRs to process) or fail with a known
-          # GitHub API error (e.g. repo not found). Either way, the package
-          # must have installed and the CLI must have been invoked.
+          # With follow=false and dispatch_ci=false, the action should run
+          # deploybot react --timeout 30 (no --follow, no --dispatch-ci flags).
+          # It may succeed (no PRs) or fail with a GitHub API error.
           if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action ran (outcome=$OUTCOME)"
+            echo "PASS: action ran with custom inputs (outcome=$OUTCOME)"
           else
             echo "FAIL: unexpected outcome: $OUTCOME"
             exit 1

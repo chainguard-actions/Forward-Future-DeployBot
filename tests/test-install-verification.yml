@@ -1,4 +1,4 @@
-name: Test basic usage with valid config
+name: Test deploybot package installs correctly
 on:
   workflow_dispatch:
 jobs:
@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Create a valid mergequeue config
+      - name: Create a minimal mergequeue config
         run: |
           cat > .mergequeue.toml <<'EOF'
           [queue]
@@ -17,8 +17,8 @@ jobs:
           merge_method = "merge"
           required_checks = ["CI"]
           dependency_directive = "Merge-queue-depends-on"
-          trusted_actors = ["github-actions-test-bot"]
-          coordinator_actors = ["github-actions-test-bot"]
+          trusted_actors = ["deploybot-test-actor"]
+          coordinator_actors = ["deploybot-test-actor", "github-actions[bot]"]
 
           [files]
           generated_paths = []
@@ -50,7 +50,7 @@ jobs:
           title_prefix = "DeployBot integration"
           EOF
 
-      - name: Run DeployBot action with follow=false and dispatch_ci=false
+      - name: Run DeployBot action (installs package as side effect)
         id: action
         uses: .
         with:
@@ -60,17 +60,26 @@ jobs:
           timeout: "30"
         continue-on-error: true
 
-      - name: Assert action completed (exit 0 or known non-fatal exit)
+      - name: Assert action ran (package was installed)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
-          # The action should succeed (no PRs to process) or fail with a known
-          # GitHub API error (e.g. repo not found). Either way, the package
-          # must have installed and the CLI must have been invoked.
           if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
             echo "PASS: action ran (outcome=$OUTCOME)"
           else
             echo "FAIL: unexpected outcome: $OUTCOME"
             exit 1
           fi
+
+      - name: Verify deploybot CLI is installed after action ran
+        run: |
+          which deploybot
+          deploybot --help
+          echo "PASS: deploybot CLI is available"
+
+      - name: Verify mergeq alias is also installed
+        run: |
+          which mergeq
+          mergeq --help
+          echo "PASS: mergeq alias is available"
