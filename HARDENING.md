@@ -16,11 +16,13 @@ Action **Forward-Future--DeployBot/v0.2.10** was hardened automatically. 1 findi
 
 ### script-injection (severity: high)
 
-Sub-rule (a): A GitHub Actions expression is directly interpolated inside a `run:` shell command string. In action.yml, the step `run: python -m pip install "${{ github.action_path }}"` embeds `${{ github.action_path }}` directly in the shell command. Even though `github.action_path` is GitHub-controlled rather than attacker-supplied, any `${{ ... }}` expression inside a `run:` block is a script-injection finding because the value flows through YAML template substitution before the shell ever sees it. The fix is to route it through an `env:` variable and reference that variable with double-quoting: `env: ACTION_PATH: ${{ github.action_path }}` then `run: python -m pip install "$ACTION_PATH"`.
+Sub-rule (a) violation: A GitHub Actions expression `${{ github.action_path }}` is interpolated directly inside a `run:` shell command string on line 27 of action.yml: `run: python -m pip install "${{ github.action_path }}"`.
+
+Any `${{ ... }}` expression directly inside a `run:` block undergoes YAML template substitution before the shell ever sees it, meaning the shell parses the raw value without quoting protection. The safe pattern is to assign the value to an `env:` variable and reference it as `"$ENV_VAR"` in the script instead.
 
 Locations:
 
-- `action.yml:23`
+- `action.yml:27`
 
 ## Iteration Notes
 
@@ -30,5 +32,5 @@ Locations:
 
 **Notes:**
 
-Fixed script-injection in hardened/action/action.yml at line 23. Moved `${{ github.action_path }}` out of the `run:` shell command and into an `env:` block as `ACTION_PATH: ${{ github.action_path }}`. The shell command now uses `"$ACTION_PATH"` instead of `"${{ github.action_path }}"`.
+Fixed script injection on line 27 of action.yml: moved `${{ github.action_path }}` out of the `run:` shell string and into an `env:` block as `ACTION_PATH`. The shell script now uses `"$ACTION_PATH"` instead of `"${{ github.action_path }}"`.
 
