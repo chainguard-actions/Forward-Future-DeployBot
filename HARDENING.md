@@ -16,11 +16,11 @@ Action **Forward-Future--DeployBot/v0.2.25** was hardened automatically. 1 findi
 
 ### script-injection (severity: high)
 
-Sub-rule (a): A ${{ ... }} expression is directly interpolated inside a run: shell command string. The step `run: python -m pip install "${{ github.action_path }}"` embeds the github.action_path context value directly into the shell command via YAML template substitution before the shell ever sees it. Any ${{ ... }} expression inside a run: block is a script-injection risk because the value is substituted into the shell script as raw text before execution. The safe pattern is to pass the value via an env: variable and reference it as "$ENV_VAR" in the shell.
+Sub-rule (a): A GitHub Actions expression is directly interpolated inside a `run:` shell command string. On line 31 of action.yml, `${{ github.action_path }}` is embedded directly in the shell command `python -m pip install "${{ github.action_path }}"`. Although `github.action_path` is not attacker-controlled in the same way as `github.head_ref`, the check rules require that NO `${{ ... }}` expression appear anywhere inside a `run:` shell command string — the value flows through YAML template substitution before the shell ever sees it, bypassing shell quoting protections. The fix is to pass the value via an `env:` variable (e.g. `ACTION_PATH: ${{ github.action_path }}`) and reference `"$ACTION_PATH"` in the script.
 
 Locations:
 
-- `action.yml:33`
+- `action.yml:31`
 
 ## Iteration Notes
 
@@ -30,5 +30,5 @@ Locations:
 
 **Notes:**
 
-Fixed script-injection vulnerability in action.yml at line 33. Moved `${{ github.action_path }}` out of the `run:` shell command and into an `env:` block as `ACTION_PATH`. The shell script now safely references it as `"$ACTION_PATH"` instead of directly interpolating the GitHub context expression into the shell command string.
+Fixed script injection on line 31 of action.yml: moved `${{ github.action_path }}` from the `run:` shell command into an `env:` block as `ACTION_PATH: ${{ github.action_path }}`, and updated the shell command to use `"$ACTION_PATH"` instead of the inline expression.
 
