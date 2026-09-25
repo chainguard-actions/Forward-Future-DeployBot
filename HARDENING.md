@@ -16,11 +16,18 @@ Action **Forward-Future--DeployBot/v0.2.15** was hardened automatically. 1 findi
 
 ### script-injection (severity: high)
 
-Sub-rule (a) violation: A GitHub Actions expression `${{ github.action_path }}` is directly interpolated inside a `run:` shell command string on line 29 of action.yml. Any `${{ ... }}` expression inside a `run:` block undergoes YAML template substitution before the shell ever sees it, making it a script-injection risk. The safe alternative is to use the pre-set environment variable `$GITHUB_ACTION_PATH` instead: `run: python -m pip install "$GITHUB_ACTION_PATH"`.
+Sub-rule (a): A GitHub Actions expression `${{ github.action_path }}` is directly interpolated inside a `run:` shell command string on line 31 of action.yml. The value is substituted by the Actions runner before the shell processes the command, meaning any unexpected characters in the path could affect shell parsing. The offending line is: `run: python -m pip install "${{ github.action_path }}"`
+
+The safe pattern is to pass the value via an `env:` variable and reference it as a quoted shell variable, e.g.:
+```yaml
+env:
+  ACTION_PATH: ${{ github.action_path }}
+run: python -m pip install "$ACTION_PATH"
+```
 
 Locations:
 
-- `action.yml:29`
+- `action.yml:31`
 
 ## Iteration Notes
 
@@ -30,5 +37,5 @@ Locations:
 
 **Notes:**
 
-Fixed script injection on line 29 of action.yml by replacing `${{ github.action_path }}` with the pre-set environment variable `$GITHUB_ACTION_PATH`. GitHub Actions automatically sets this environment variable, so it's safe to use directly in shell commands without going through YAML template substitution.
+Fixed script injection on line 31 of action.yml: moved `${{ github.action_path }}` out of the `run:` shell string and into an `env:` block as `ACTION_PATH`. The shell command now uses the quoted variable `"$ACTION_PATH"` instead of the directly interpolated expression.
 
