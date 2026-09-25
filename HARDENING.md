@@ -16,13 +16,11 @@ Action **Forward-Future--DeployBot/v0.2.14** was hardened automatically. 1 findi
 
 ### script-injection (severity: high)
 
-Sub-rule (a): A GitHub Actions expression `${{ github.action_path }}` is interpolated directly inside a `run:` shell command string. Before the shell ever sees the command, YAML template substitution replaces the expression with its value, meaning any unexpected characters in the path could affect shell parsing. The offending line is: `run: python -m pip install "${{ github.action_path }}"`
-
-The safe alternative is to use the `$GITHUB_ACTION_PATH` environment variable (which is automatically set by the runner) instead of the `${{ github.action_path }}` expression: `run: python -m pip install "$GITHUB_ACTION_PATH"`
+Sub-rule (a): A GitHub Actions expression is directly interpolated inside a `run:` shell command string. On line 30 of action.yml, `${{ github.action_path }}` is embedded directly in the shell command `python -m pip install "${{ github.action_path }}"`. Although `github.action_path` is typically GitHub-controlled, any `${{ ... }}` expression interpolated directly into a `run:` block is a script-injection risk because the value flows through YAML template substitution before the shell ever sees it, bypassing shell quoting protections.
 
 Locations:
 
-- `action.yml:31`
+- `action.yml:30`
 
 ## Iteration Notes
 
@@ -32,5 +30,5 @@ Locations:
 
 **Notes:**
 
-Replaced `${{ github.action_path }}` in the `run: python -m pip install` command with the equivalent runner-provided environment variable `$GITHUB_ACTION_PATH`. This avoids YAML template substitution of the expression directly into the shell string, eliminating the script injection risk. The `$GITHUB_ACTION_PATH` environment variable is automatically set by the GitHub Actions runner and is the safe, idiomatic alternative.
+Fixed script injection on line 30 of action.yml: moved `${{ github.action_path }}` out of the inline `run:` shell command and into an `env:` block as `ACTION_PATH`. The shell command now uses `"$ACTION_PATH"` instead of `"${{ github.action_path }}"`.
 
