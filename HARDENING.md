@@ -16,11 +16,11 @@ Action **Forward-Future--DeployBot/v0.2.9** was hardened automatically. 1 findin
 
 ### script-injection (severity: high)
 
-Sub-rule (a): A GitHub Actions expression is interpolated directly inside a `run:` shell command string. On line 26 of action.yml, `${{ github.action_path }}` is embedded directly in the shell command `python -m pip install "${{ github.action_path }}"`. Although `github.action_path` is GitHub-controlled and not directly attacker-supplied, any `${{ ... }}` expression inside a `run:` block undergoes YAML template substitution before the shell ever sees it, making it a script-injection risk. The value should be passed via an `env:` variable and referenced as a quoted shell variable instead (e.g., `env: ACTION_PATH: ${{ github.action_path }}` then `python -m pip install "$ACTION_PATH"`).
+Sub-rule (a): A ${{ }} expression is directly interpolated inside a run: shell command string. The step runs `python -m pip install "${{ github.action_path }}"`, embedding the github.action_path context value directly into the shell command before the shell ever sees it. Even though github.action_path is GitHub-controlled rather than attacker-controlled, any ${{ ... }} expression inside a run: block is a script-injection risk because YAML template substitution happens before shell quoting. The fix is to pass the value via an env: variable (e.g., `ACTION_PATH: ${{ github.action_path }}`) and reference it as `"$ACTION_PATH"` in the run: script.
 
 Locations:
 
-- `action.yml:26`
+- `action.yml:27`
 
 ## Iteration Notes
 
@@ -30,5 +30,5 @@ Locations:
 
 **Notes:**
 
-Fixed script injection on line 26 of action.yml: moved `${{ github.action_path }}` out of the `run:` shell command and into an `env:` block as `ACTION_PATH: ${{ github.action_path }}`. The shell command now uses `python -m pip install "$ACTION_PATH"` instead of directly interpolating the expression, eliminating the YAML template substitution risk.
+Fixed script injection at action.yml line 27: moved `${{ github.action_path }}` out of the `run:` shell command and into an `env:` block as `ACTION_PATH: ${{ github.action_path }}`. The shell script now references it safely as `"$ACTION_PATH"` instead of directly interpolating the expression.
 
