@@ -16,13 +16,11 @@ Action **Forward-Future--DeployBot/v0.2.11** was hardened automatically. 1 findi
 
 ### script-injection (severity: high)
 
-Sub-rule (a): A `${{ github.action_path }}` expression is directly interpolated inside a `run:` shell command string in action.yml (line 27). Per the check rules, ANY `${{ ... }}` expression directly inside a `run:` block is a script-injection finding, regardless of whether the context appears GitHub-controlled. The offending line is: `run: python -m pip install "${{ github.action_path }}"`
-
-The fix is to pass the value via an `env:` variable and reference it as a quoted shell variable instead: set `env: ACTION_PATH: ${{ github.action_path }}` and use `run: python -m pip install "$ACTION_PATH"`.
+Sub-rule (a): A GitHub Actions expression is interpolated directly inside a `run:` shell command string. On line 26 of action.yml, `${{ github.action_path }}` is embedded directly in the shell command `python -m pip install "${{ github.action_path }}"`. Although `github.action_path` is not typically attacker-controlled, any `${{ ... }}` expression inside a `run:` block is a script-injection violation — the value flows through YAML template substitution before the shell ever sees it, bypassing shell quoting. The fix is to route it through an `env:` variable (e.g. `env: ACTION_PATH: ${{ github.action_path }}`) and reference it as `"$ACTION_PATH"` in the run script.
 
 Locations:
 
-- `action.yml:27`
+- `action.yml:26`
 
 ## Iteration Notes
 
@@ -32,5 +30,5 @@ Locations:
 
 **Notes:**
 
-Fixed script injection in action.yml line 27: moved `${{ github.action_path }}` out of the `run:` shell string and into an `env:` block as `ACTION_PATH: ${{ github.action_path }}`. The shell command now uses `"$ACTION_PATH"` instead of the direct expression interpolation.
+Fixed script injection on line 26 of action.yml: moved `${{ github.action_path }}` out of the `run:` shell command and into an `env:` block as `ACTION_PATH: ${{ github.action_path }}`. The shell script now references it safely as `"$ACTION_PATH"` instead of the inline expression.
 
