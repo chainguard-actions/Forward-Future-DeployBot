@@ -6,14 +6,14 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 ## Versions
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v0.2.10 | [`v0.2.10`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.10) | [`419adc2`](https://github.com/Forward-Future/DeployBot/commit/419adc2307df125365a0ca977eb7c9e49ebc48f5) |
-| v0.2.11 | [`v0.2.11`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.11) | [`fe9ac3e`](https://github.com/Forward-Future/DeployBot/commit/fe9ac3eec777ad0a47aad96858f5283ded2a7dff) |
-| v0.2.14 | [`v0.2.14`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.14) | [`b59edc8`](https://github.com/Forward-Future/DeployBot/commit/b59edc8cb1060459fa2b52ccec8808e217e47f00) |
-| v0.2.15 | [`v0.2.15`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.15) | [`53f1adc`](https://github.com/Forward-Future/DeployBot/commit/53f1adc0bf1763866eeccbfbde923be2c60746c7) |
-| v0.2.25 | [`v0.2.25`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.25) | [`1e27c4e`](https://github.com/Forward-Future/DeployBot/commit/1e27c4e790b71bd2e80cb57137cc7614cdad81cf) |
-| v0.2.9 | [`v0.2.9`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.9) | [`67929bb`](https://github.com/Forward-Future/DeployBot/commit/67929bb6fe25d3b98107ac1b898a19c2adafc620) |
+| Version | Tag | Upstream commit | Hardening report |
+|---------|-----|-----------------|------------------|
+| v0.2.10 | [`v0.2.10`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.10) | [`419adc2`](https://github.com/Forward-Future/DeployBot/commit/419adc2307df125365a0ca977eb7c9e49ebc48f5) | [`HARDENING.md`](https://github.com/chainguard-actions/Forward-Future-DeployBot/blob/v0.2.10/HARDENING.md) |
+| v0.2.11 | [`v0.2.11`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.11) | [`fe9ac3e`](https://github.com/Forward-Future/DeployBot/commit/fe9ac3eec777ad0a47aad96858f5283ded2a7dff) | [`HARDENING.md`](https://github.com/chainguard-actions/Forward-Future-DeployBot/blob/v0.2.11/HARDENING.md) |
+| v0.2.14 | [`v0.2.14`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.14) | [`b59edc8`](https://github.com/Forward-Future/DeployBot/commit/b59edc8cb1060459fa2b52ccec8808e217e47f00) | [`HARDENING.md`](https://github.com/chainguard-actions/Forward-Future-DeployBot/blob/v0.2.14/HARDENING.md) |
+| v0.2.15 | [`v0.2.15`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.15) | [`53f1adc`](https://github.com/Forward-Future/DeployBot/commit/53f1adc0bf1763866eeccbfbde923be2c60746c7) | [`HARDENING.md`](https://github.com/chainguard-actions/Forward-Future-DeployBot/blob/v0.2.15/HARDENING.md) |
+| v0.2.25 | [`v0.2.25`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.25) | [`1e27c4e`](https://github.com/Forward-Future/DeployBot/commit/1e27c4e790b71bd2e80cb57137cc7614cdad81cf) | [`HARDENING.md`](https://github.com/chainguard-actions/Forward-Future-DeployBot/blob/v0.2.25/HARDENING.md) |
+| v0.2.9 | [`v0.2.9`](https://github.com/chainguard-actions/Forward-Future-DeployBot/tree/v0.2.9) | [`67929bb`](https://github.com/Forward-Future/DeployBot/commit/67929bb6fe25d3b98107ac1b898a19c2adafc620) | [`HARDENING.md`](https://github.com/chainguard-actions/Forward-Future-DeployBot/blob/v0.2.9/HARDENING.md) |
 
 ## Privacy
 
